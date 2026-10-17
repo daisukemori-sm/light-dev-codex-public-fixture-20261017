@@ -1,6 +1,7 @@
 import json
 import threading
 import urllib.request
+from urllib.parse import urlencode
 from http.server import ThreadingHTTPServer
 from server import Handler
 s=ThreadingHTTPServer(('127.0.0.1',0),Handler)
@@ -12,5 +13,15 @@ try:
     assert get('status=approved&owner=alice&actor=alice') is False
     assert get('status=pending&owner=alice&actor=bob') is False
     assert get('status=pending&owner=&actor=') is False
-    print('PASS: local API e2e 4 scenarios')
+    allowed_pairs = {('alice', 'alice'), ('bob', 'bob')}
+    scenarios = 0
+    for status in ('pending', 'approved', 'unknown', ''):
+        for owner in ('alice', 'bob', ''):
+            for actor in ('alice', 'bob', ''):
+                expected = (owner, actor) in allowed_pairs if status == 'pending' else False
+                query = urlencode({'status': status, 'owner': owner, 'actor': actor})
+                actual = get(query)
+                assert actual is expected, (status, owner, actor, expected, actual)
+                scenarios += 1
+    print(f'PASS: local API e2e 4 existing + {scenarios} matrix scenarios')
 finally: s.shutdown();s.server_close();t.join()
